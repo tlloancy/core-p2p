@@ -25,6 +25,7 @@ type BlobStore = Arc<Mutex<HashMap<String, Vec<u8>>>>;
 struct Inner {
     endpoint: Endpoint,
     _router: Router,
+    bind_addr: String,
 }
 
 static PEERS: Lazy<Mutex<HashMap<String, Arc<Inner>>>> =
@@ -148,6 +149,12 @@ pub async fn create_peer() -> napi::Result<String> {
         .map_err(|e| napi::Error::from_reason(format!("bind failed: {e}")))?;
 
     let node_id = endpoint.id().to_string();
+    let bind_addr = endpoint
+        .bound_sockets()
+        .into_iter()
+        .find(|a| a.is_ipv4())
+        .map(|a| a.to_string())
+        .unwrap_or_else(|| "127.0.0.1:0".to_string());
     let store: BlobStore = Arc::new(Mutex::new(HashMap::new()));
     let acceptor = BlobAcceptor { store: store.clone() };
     let router = Router::builder(endpoint.clone())
@@ -163,6 +170,7 @@ pub async fn create_peer() -> napi::Result<String> {
         Arc::new(Inner {
             endpoint,
             _router: router,
+            bind_addr,
         }),
     );
 
@@ -265,6 +273,28 @@ pub fn received_hashes(peer: String) -> napi::Result<Vec<String>> {
     let store = shared_store(&peer)?;
     let keys: Vec<String> = store.lock().unwrap().keys().cloned().collect();
     Ok(keys)
+}
+
+/// Local bind address (e.g. `127.0.0.1:54321`) for peer diversity selection in tests.
+#[napi(js_name = "peer_endpoint")]
+pub fn peer_endpoint(peer: String) -> napi::Result<String> {
+    Ok(get_peer(&peer)?.bind_addr.clone())
+}
+
+/// Store a chunk locally and announce availability to fetchers (viewer seeding).
+#[napi(js_name = "seed_blob")]
+pub fn seed_blob(peer: String, hash: String, data: Buffer) -> napi::Result<()> {
+    let bytes: Vec<u8> = data.to_vec();
+    if sha256_hex(&bytes) != hash {
+        return Err(napi::Error::from_reason(format!(
+            "seed_blob hash mismatch: expected {hash}"
+        )));
+    }
+    shared_store(&peer)?
+        .lock()
+        .unwrap()
+        .insert(hash, bytes);
+    Ok(())
 }
 
 #[napi(js_name = "shutdown_peer")]
