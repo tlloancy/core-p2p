@@ -1,0 +1,25 @@
+[package]
+name = "core-p2p"
+version = "0.1.0"
+edition = "2021"
+description = "P2P video distribution engine (iroh) exposed to Node.js via napi"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", default-features = false, features = ["napi6", "async", "tokio_rt"] }
+napi-derive = "2"
+iroh = "1"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+sha2 = "0.10"
+hex = "0.4"
+once_cell = "1"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+opt-level = 3

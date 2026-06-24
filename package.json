@@ -1,0 +1,14 @@
+{
+  "name": "core-p2p",
+  "version": "0.1.0",
+  "description": "P2P video distribution engine (iroh) as a native Node addon",
+  "main": "index.node",
+  "scripts": {
+    "build": "bash build.sh",
+    "test:step1": "node test/step1.js",
+    "test:step2": "node test/step2.js",
+    "test:step3": "node test/step3.js",
+    "test:step4": "node test/step4.js"
+  },
+  "license": "MIT"
+}

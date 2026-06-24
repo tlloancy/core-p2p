@@ -1,0 +1,5 @@
+/target/
+index.node
+Cargo.lock
+test/fixtures/
+node_modules/
