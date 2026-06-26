@@ -135,8 +135,7 @@ async fn transfer_blob(
 #[napi(js_name = "create_peer")]
 pub async fn create_peer() -> napi::Result<String> {
     let endpoint = Endpoint::builder(iroh::endpoint::presets::N0)
-        .clear_ip_transports()
-        .bind_addr("127.0.0.1:0")
+        .bind_addr("0.0.0.0:0")
         .map_err(|e| napi::Error::from_reason(format!("bind_addr failed: {e}")))?
         .alpns(vec![ALPN.to_vec()])
         .bind()
@@ -144,12 +143,7 @@ pub async fn create_peer() -> napi::Result<String> {
         .map_err(|e| napi::Error::from_reason(format!("bind failed: {e}")))?;
 
     let node_id = endpoint.id().to_string();
-    let bind_addr = endpoint
-        .bound_sockets()
-        .into_iter()
-        .find(|a| a.is_ipv4())
-        .map(|a| a.to_string())
-        .unwrap_or_else(|| "127.0.0.1:0".to_string());
+    let dial_addr = format!("{:?}", endpoint.addr());
     let store: BlobStore = Arc::new(Mutex::new(HashMap::new()));
     let acceptor = BlobAcceptor { store: store.clone() };
     let router = Router::builder(endpoint.clone())
@@ -165,7 +159,7 @@ pub async fn create_peer() -> napi::Result<String> {
         Arc::new(Inner {
             endpoint,
             _router: router,
-            bind_addr,
+            bind_addr: dial_addr,
         }),
     );
 
