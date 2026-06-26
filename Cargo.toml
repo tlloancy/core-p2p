@@ -8,14 +8,20 @@ description = "P2P video distribution engine (iroh) exposed to Node.js via napi"
 crate-type = ["cdylib"]
 
 [dependencies]
+sha2 = "0.10"
+hex = "0.4"
+once_cell = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 napi = { version = "2", default-features = false, features = ["napi6", "async", "tokio_rt"] }
 napi-derive = "2"
 iroh = "1"
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
-sha2 = "0.10"
-hex = "0.4"
-once_cell = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { version = "1", features = ["sync", "macros", "io-util", "rt"], default-features = false }
+wasm-bindgen = "0.2"
 
 [build-dependencies]
 napi-build = "2"
