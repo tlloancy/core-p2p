@@ -8,7 +8,10 @@
     "test:step1": "node test/step1.js",
     "test:step2": "node test/step2.js",
     "test:step3": "node test/step3.js",
-    "test:step4": "node test/step4.js"
+    "test:step4": "node test/step4.js",
+    "test:step11": "bash test/run-step11.sh",
+    "test:relay": "bash test/run-relay-connect.sh",
+    "test:relay-napi-client": "bash test/run-rust-server-napi-probe.sh"
   },
   "license": "MIT"
 }
