@@ -1,5 +1,7 @@
 //! Native Node.js addon — iroh QUIC peer mesh (not compiled for wasm32).
 
+use crate::blob_disk;
+
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -52,7 +54,7 @@ impl ProtocolHandler for BlobAcceptor {
         }
 
         let hash = sha256_hex(&data);
-        self.store.lock().unwrap().insert(hash.clone(), data.clone());
+        insert_blob(&self.store, hash.clone(), data.clone());
         let _ = send.write_all(hash.as_bytes()).await;
         let _ = send.finish();
         connection.closed().await;
@@ -89,6 +91,13 @@ struct PeerHandle {
 
 static PEERS: Lazy<Mutex<HashMap<String, Arc<PeerHandle>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+
+fn insert_blob(store: &BlobStore, hash: String, data: Vec<u8>) {
+    store.lock().unwrap().insert(hash.clone(), data.clone());
+    if let Err(err) = blob_disk::persist_blob(&hash, &data) {
+        eprintln!("warning: persist blob {hash}: {err}");
+    }
+}
 
 fn sha256_hex(data: &[u8]) -> String {
     let mut h = Sha256::new();
@@ -251,7 +260,7 @@ async fn run_peer(
             PeerCommand::SendBlob { to, data, reply } => {
                 let result = async {
                     let hash = sha256_hex(&data);
-                    store.lock().unwrap().insert(hash.clone(), data.clone());
+                    insert_blob(&store, hash.clone(), data.clone());
                     let target = resolve_remote_addr(&to)?;
                     transfer_blob(&endpoint, target, data).await
                 }
@@ -273,7 +282,16 @@ async fn run_peer(
 }
 
 async fn start_peer() -> napi::Result<(String, Arc<PeerHandle>)> {
-    let store: BlobStore = Arc::new(Mutex::new(HashMap::new()));
+    let initial = blob_disk::load_all_blobs().unwrap_or_else(|err| {
+        eprintln!("warning: load blobs from disk: {err}");
+        HashMap::new()
+    });
+    eprintln!(
+        "core-p2p: loaded {} blob(s) from {}",
+        initial.len(),
+        blob_disk::blob_store_dir().display()
+    );
+    let store: BlobStore = Arc::new(Mutex::new(initial));
     let (ready_tx, ready_rx) = oneshot::channel();
     let (cmd_tx, cmd_rx) = mpsc::channel(32);
 
@@ -363,7 +381,10 @@ pub async fn fetch_blob(local: String, remote: String, hash: String) -> napi::Re
     shared_store(&local)?
         .lock()
         .unwrap()
-        .insert(hash_for_store, bytes.clone());
+        .insert(hash_for_store.clone(), bytes.clone());
+    if let Err(err) = blob_disk::persist_blob(&hash_for_store, &bytes) {
+        eprintln!("warning: persist blob {hash_for_store}: {err}");
+    }
     Ok(Buffer::from(bytes))
 }
 
@@ -408,10 +429,11 @@ pub fn seed_blob(peer: String, hash: String, data: Buffer) -> napi::Result<()> {
             "seed_blob hash mismatch: expected {hash}"
         )));
     }
-    shared_store(&peer)?
-        .lock()
-        .unwrap()
-        .insert(hash, bytes);
+    insert_blob(
+        &shared_store(&peer)?,
+        hash,
+        bytes,
+    );
     Ok(())
 }
 

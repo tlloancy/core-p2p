@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use core_p2p::blob_disk;
 use iroh::address_lookup::pkarr::PkarrResolver;
 use iroh::endpoint::Connection;
 use iroh::endpoint::presets;
@@ -41,11 +42,18 @@ impl ProtocolHandler for BlobAcceptor {
         }
 
         let hash = sha256_hex(&data);
-        self.store.lock().unwrap().insert(hash.clone(), data.clone());
+        insert_blob(&self.store, hash.clone(), data.clone());
         let _ = send.write_all(hash.as_bytes()).await;
         let _ = send.finish();
         connection.closed().await;
         Ok(())
+    }
+}
+
+fn insert_blob(store: &BlobStore, hash: String, data: Vec<u8>) {
+    store.lock().unwrap().insert(hash.clone(), data.clone());
+    if let Err(err) = blob_disk::persist_blob(&hash, &data) {
+        eprintln!("warning: persist blob {hash}: {err}");
     }
 }
 
@@ -69,7 +77,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn serve() -> Result<(), Box<dyn std::error::Error>> {
-    let store: BlobStore = Arc::new(Mutex::new(HashMap::new()));
+    let initial = blob_disk::load_all_blobs().unwrap_or_else(|err| {
+        eprintln!("warning: load blobs from disk: {err}");
+        HashMap::new()
+    });
+    eprintln!(
+        "blob_relay: loaded {} blob(s) from {}",
+        initial.len(),
+        blob_disk::blob_store_dir().display()
+    );
+    let store: BlobStore = Arc::new(Mutex::new(initial));
     let endpoint = bind().await?;
     let _router = Router::builder(endpoint.clone())
         .accept(ALPN, BlobAcceptor { store })

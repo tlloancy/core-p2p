@@ -5,7 +5,7 @@ edition = "2021"
 description = "P2P video distribution engine (iroh) exposed to Node.js via napi"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sha2 = "0.10"
