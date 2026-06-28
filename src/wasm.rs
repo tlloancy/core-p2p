@@ -59,10 +59,7 @@ pub async fn create_peer_wasm() -> Result<String, JsError> {
         .await
         .map_err(|e| js_err(format!("bind failed: {e}")))?;
 
-    endpoint
-        .online()
-        .await
-        .map_err(|e| js_err(format!("relay online failed: {e}")))?;
+    endpoint.online().await;
 
     let id = endpoint.id().to_string();
     *peer_slot().lock().map_err(|_| js_err("peer lock poisoned"))? = Some(PeerState { endpoint });
