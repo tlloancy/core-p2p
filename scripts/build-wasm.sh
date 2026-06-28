@@ -24,7 +24,8 @@ wasm-pack build \
   -- \
   --no-default-features
 
-mkdir -p ../sport-app/public/core-p2p
-cp -f pkg/core_p2p.js pkg/core_p2p_bg.wasm pkg/core_p2p.d.ts ../sport-app/public/core-p2p/ 2>/dev/null || true
+mkdir -p ../sport-app/public/wasm ../sport-app/public/core-p2p
+cp -f pkg/core_p2p.js pkg/core_p2p_bg.wasm pkg/core_p2p.d.ts ../sport-app/public/wasm/ 2>/dev/null || true
+cp -f pkg/core_p2p.js pkg/core_p2p_bg.wasm ../sport-app/public/core-p2p/ 2>/dev/null || true
 
-echo "WASM_BUILD_OK -> pkg/ (+ sport-app/public/core-p2p when copy succeeded)"
+echo "WASM_BUILD_OK -> pkg/ (+ sport-app/public/wasm, served via /api/wasm/)"
