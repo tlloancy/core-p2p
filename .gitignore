@@ -3,3 +3,8 @@ index.node
 Cargo.lock
 test/fixtures/
 node_modules/
+# Stray target dir when CARGO_TARGET_DIR=C:\... is run from WSL
+/C:Userstom/
+/C*Userstom/
+test-wasm-iroh/
+test-wasm-iroh-default/

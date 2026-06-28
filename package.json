@@ -5,6 +5,7 @@
   "main": "index.node",
   "scripts": {
     "build": "bash build.sh",
+    "build:wasm": "bash scripts/build-wasm.sh",
     "test:step1": "node test/step1.js",
     "test:step2": "node test/step2.js",
     "test:step3": "node test/step3.js",
